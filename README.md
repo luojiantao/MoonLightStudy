@@ -180,14 +180,18 @@ NvPairingManager::pair(QString appVersion, QString pin, QSslCertificate& serverC
 }
 ```
 1. /pair?devicename=roth&updateState=1&phrase=getservercert&salt=&clientcert=
-  - salt
-    	16位的随机值。
-  
-  - clientcert
-
-    客户端证书（自己新创建的）
- - response
- 	服务端证书字符串
+	- salt
+		16位的随机值。
+		
+	- clientcert
+		客户端证书（自己新创建的）
+		
+	- response
+		服务端证书字符串
+		
+	- 服务端行为描述
+	
+	  保存salt和证书，根据用户在服务端输入pin值得到aeskey。返回服务端证书
 2. /pair?devicename=roth&updateState=1&clientchallenge=
 
 	- clientchallenge
@@ -209,6 +213,10 @@ NvPairingManager::pair(QString appVersion, QString pin, QSslCertificate& serverC
         //hash(randomChallenge + 服务端证书签名 + 证书)
         QByteArray serverResponse(challengeResponseData.data(), hashLength);
         ```
+	     
+	- 服务端行为描述
+	
+	     服务点解密得到 randomChallenge并保存. hash + 16位值
 3. /pair?devicename=roth&updateState=1&serverchallengeresp=
 	
 	- serverchallengeresp
@@ -240,12 +248,30 @@ NvPairingManager::pair(QString appVersion, QString pin, QSslCertificate& serverC
 	  verifySignature(serverSecret,
 	                           serverSignature,
 	                           serverCertStr)
+	  //进行验证
+	  QByteArray expectedResponseData;
+	  expectedResponseData.append(randomChallenge);
+	  expectedResponseData.append(getSignatureFromPemCert(serverCertStr));
+	  expectedResponseData.append(serverSecret);
+	  if (QCryptographicHash::hash(expectedResponseData, hashAlgo) != serverResponse)；
 	  ```
+	  
+	- 服务端行为描述
 	
+	  服务端解密得到 paddedHash(16位值(服务端生成的) + 客户端证书签名 + 16位值客户端生成)保存，等要下一个流程进行校验。  返回签名 值+数字签名。（客户端用服务端证书进行校验），值等于第2次握手返回的服务端生成的值
 4. /pair?devicename=roth&updateState=1&clientpairingsecret=
 	
 	- clientpairingsecret（前面的流程证书已经交换成功，现在进行验证）
+	  
 	  - 16位随机值 + 这个值的签名
-5. /pair?devicename=roth&updateState=1&phrase=pairchallenge
+	  
+	- 服务端行为描述
 	
-	- reponse
+	  进行数字签名验证（用客户端证书）
+5. /pair?devicename=roth&updateState=1&phrase=pairchallenge
+
+  - reponse
+
+  - 服务端行为描述
+
+    确认匹配成功
