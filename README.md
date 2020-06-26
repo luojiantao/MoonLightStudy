@@ -112,4 +112,51 @@ NvPairingManager::pair(QString appVersion, QString pin, QSslCertificate& serverC
     确认匹配成功
 
 
-## 流媒体协商
+## 流媒体协商和媒体数据传输
+
+#### 关键代码函数(以windows环境为例)
+```C++
+void Session::exec(int displayOriginX, int displayOriginY);
+```
+- 初始化
+initialize()
+	1. SDL相关初始化
+		这个部分先不作分析，主要分析媒体相关。
+- m_StreamConfig，LiStartConnection
+- LiStartConnection
+		1. 配置参数检查
+		2. STAGE_NAME_RESOLUTION 验证对端服务器是否可以连接
+		3. STAGE_RTSP_HANDSHAKE RTSP握手
+		4. STAGE_CONTROL_STREAM_INIT 控制流初始化（TODO）
+		5. STAGE_VIDEO_STREAM_INIT 视频流初始化
+		6. STAGE_AUDIO_STREAM_INIT 音频流初始化
+		7. STAGE_INPUT_STREAM_INIT 输入流初始化
+		8. STAGE_CONTROL_STREAM_START 开始监听控制流
+		9. STAGE_VIDEO_STREAM_START 开始监听视频流
+		10. STAGE_AUDIO_STREAM_START 开始监听音频流
+		11. STAGE_INPUT_STREAM_START 开始监听输入流
+		12. 触发鼠标摇晃事件数据发送给服务端
+- m_InputHandler 处理设备输入事件（鼠标，键盘）
+	1. LiSendKeyboardEvent
+	2. LiSendMouseMoveEvent
+
+#### 简单的服务端传输一帧视频数据，客户端的流程
+1. 初始化流程
+	1. initializeVideoStream
+	2. renderContext = nullptr
+	3. VideoCallbacks.setup
+2. 收到数据到解码显示的流程
+	1. ReceiveThreadProc
+		1. recvUdpSocket 接受到是一个 packet包数据
+		2. queuePacket 接受到的数据放入队列中，返回执行状态RTPF_RET_QUEUED
+	2. DecoderThreadProc
+		1. getNextQueuedDecodeUnit 从队列中获取解码单元数据
+		
+		2. VideoCallbacks.submitDecodeUnit（Session::drSubmitDecodeUnit） 解码
+		
+		   1. ```
+		      FFmpegVideoDecoder(testOnly);
+		      ```
+		
+		3. completeQueuedDecodeUnit 解码完成释放内存资源
+#### 发送控制流程（键盘，鼠标，手柄）
