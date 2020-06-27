@@ -149,6 +149,7 @@ initialize()
 	1. ReceiveThreadProc
 		1. recvUdpSocket 接受到是一个 packet包数据
 		2. queuePacket 接受到的数据放入队列中，返回执行状态RTPF_RET_QUEUED
+		
 	2. DecoderThreadProc
 		1. getNextQueuedDecodeUnit 从队列中获取解码单元数据
 		
@@ -159,4 +160,11 @@ initialize()
 		      ```
 		
 		3. completeQueuedDecodeUnit 解码完成释放内存资源
+		
+	3. 解码后的帧交给SDL进行渲染展示（音视频同步）
+	
+	   1. TODO
 #### 发送控制流程（键盘，鼠标，手柄）
+
+#### RTSP握手流程
+
