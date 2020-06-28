@@ -145,6 +145,8 @@ initialize()
 	1. initializeVideoStream
 	2. renderContext = nullptr
 	3. VideoCallbacks.setup
+	4. UdpPingThreadProc
+	   1. 客户端ping服务端（通过配置知道服务端端口），从而告诉服务端客户端的UDP端口
 2. 收到数据到解码显示的流程
 	1. ReceiveThreadProc
 		1. recvUdpSocket 接受到是一个 packet包数据
@@ -155,10 +157,8 @@ initialize()
 		
 		2. VideoCallbacks.submitDecodeUnit（Session::drSubmitDecodeUnit） 解码
 		
-		   1. ```
-		      FFmpegVideoDecoder(testOnly);
-		      ```
-		
+		   1. FFmpegVideoDecoder(testOnly);
+		   
 		3. completeQueuedDecodeUnit 解码完成释放内存资源
 		
 	3. 解码后的帧交给SDL进行渲染展示（音视频同步）
@@ -166,5 +166,63 @@ initialize()
 	   1. TODO
 #### 发送控制流程（键盘，鼠标，手柄）
 
-#### RTSP握手流程
+#### RTSP握手流程（https://blog.csdn.net/u014755412/article/details/78873844）
 
+ 1. 根据版本确定rtsp的url 和客户端版本
+
+    ```
+    例如 
+    rtspru://192.168.1.3:48010 启用Enet
+    rtsp://192.168.1.3:48010  使用TCP
+    ```
+
+ 2. ENet （使用UDP的网络通信库）
+
+      1. net网络库是一个利用epoll实现的支持tcp，udp，http等不同协议（可自由扩展）的高并发网络库
+
+    TODO
+
+3. requestOptions
+
+       1. initializeRtspRequest(&request, "OPTIONS", rtspTargetUrl)
+             1. createRtspRequest
+             2. addOption(msg, "CSeq", sequenceNumberStr)
+             3. addOption(msg, "X-GS-ClientVersion", clientVersionStr)
+             4. addOption(msg, "Host", urlAddr)
+
+4. requestDescribe (获得服务端媒体信息SDP)
+
+       1. initializeRtspRequest(&request, "DESCRIBE", rtspTargetUrl)
+       2. addOption(&request, "Accept", "application/sdp")
+       3. addOption(&request, "If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT")
+
+5. ```
+    setupStream(&response, AppVersionQuad[0] >= 5 ? "streamid=audio/0/0" : "streamid=audio",&error)
+    ```
+
+    ​	**建立请求**指定如何传输单个媒体流。通过分析GFE服务端不关心这个协议携带的端口号和传输方式。有固定的RTP传输通道。
+
+    #define RTP_PORT 48000 这个是GFE服务端的通信端口号。
+
+6. ```
+  setupStream(&response, AppVersionQuad[0] >= 5 ? "streamid=video/0/0" :
+  "streamid=video",&error)
+  ```
+
+7. ```
+      setupStream(&response, "streamid=control/1/0", &error)
+      ```
+
+8. ```
+    sendVideoAnnounce
+    ```
+
+9. ```
+      playStream(&response, "streamid=video", &error)
+      ```
+
+10. ```
+      playStream(&response, "streamid=audio", &error)
+      ```
+
+11. 
